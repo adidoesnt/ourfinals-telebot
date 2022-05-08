@@ -4,6 +4,7 @@
 
 ### dependencies
 import os
+from urllib import response
 import telebot
 import requests
 
@@ -21,6 +22,7 @@ apiServerUrl = 'https://ourfinals-telebot-server.herokuapp.com/'
 ### global variables
 types = telebot.types
 forceReply = types.ForceReply(selective=False)
+removeMarkup = types.ReplyKeyboardRemove(selective=False)
 
 ### message handlers
 @bot.message_handler(commands=['start'])
@@ -41,18 +43,74 @@ def startHandler(message):
         keyAugment.add('view profile')
         bot.send_message(id, greeting, reply_markup=keyAugment)
 
-def signupStartHandler(message):
-    reply = ''
+def mainMenu(message):
+    username = message.chat.username
     id = message.chat.id
+    prompt = f"How can I help you, {username}?"
+    bot.send_message(id, prompt)
+
+def signupStartHandler(message):
+    id = message.chat.id
+    signupData = {
+        'username': message.chat.username,
+        'chat_id': id,
+        "assignments_as_student": [],
+        "assignments_as_tutor": []
+    }
+    reply = ''
     if message.text == 'yes':
         keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         reply = "Great! What faculty are you in?"
         for faculty in faculties:
             keyAugment.add(faculty)
         bot.send_message(id, reply, reply_markup=keyAugment)
+        bot.register_next_step_handler(message, facultyHandler, signupData)
     else:
         reply = "See you around!"
-        bot.send_message(id, reply)    
+        bot.send_message(id, reply)
+
+def facultyHandler(message, signupData):
+    signupData['faculty'] = message.text 
+    id = message.chat.id
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    for year in range(1, 6):
+        keyAugment.add(str(year))
+    reply = 'Got it! What year are you in?'
+    bot.send_message(id, reply, reply_markup=keyAugment)
+    bot.register_next_step_handler(message, yearHandler, signupData)
+
+def yearHandler(message, signupData):
+    signupData['year'] = message.text
+    id = message.chat.id
+    reply = "What's your NUSNET ID? This is the ID that begins with 'E', followed by 7 digits."
+    bot.send_message(id, reply)
+    bot.register_next_step_handler(message, signupCompleteHandler, signupData)
+
+def signupCompleteHandler(message, signupData):
+    testId = str(message.text).lower()
+    id = message.chat.id
+    reply = ''
+    if testId.startswith('e') and len(testId) == 8 and testId[1:7].isnumeric():
+        signupData['nusnet_id'] = message.text
+        try:
+            response = requests.post(f"{apiServerUrl}users/add", signupData)
+            if response.status_code == 200:
+                print(signupData)
+                reply = 'Welcome to OurFinals!'
+                bot.send_message(id, reply)
+                mainMenu(message)
+            else:
+                reply = 'I was unable to sign you up... Please try again.'
+                bot.send_message(id, reply)
+                signupStartHandler(message)
+        except:
+            reply = 'I was unable to sign you up... Please try again.'
+            bot.send_message(id, reply)
+            signupStartHandler(message)
+    else:
+        reply = 'You have entered an invalid NUSNET ID! Please try again.'
+        bot.send_message(id, reply)
+        bot.register_next_step_handler(message, signupCompleteHandler, signupData)
 
 ### polling
 if __name__ == "__main__":
