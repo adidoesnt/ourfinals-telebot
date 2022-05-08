@@ -4,7 +4,6 @@
 
 ### dependencies
 import os
-from urllib import response
 import telebot
 import requests
 
