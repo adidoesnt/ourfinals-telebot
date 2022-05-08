@@ -95,7 +95,6 @@ def signupCompleteHandler(message, signupData):
         try:
             response = requests.post(f"{apiServerUrl}users/add", signupData)
             if response.status_code == 200:
-                print(signupData)
                 reply = 'Welcome to OurFinals!'
                 bot.send_message(id, reply)
                 mainMenu(message)
