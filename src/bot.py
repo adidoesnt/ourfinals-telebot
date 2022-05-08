@@ -70,28 +70,47 @@ def signupStartHandler(message):
         bot.send_message(id, reply)
 
 def facultyHandler(message, signupData):
-    signupData['faculty'] = message.text 
+    testFaculty = str(message.text).lower()
     id = message.chat.id
-    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-    for year in range(1, 6):
-        keyAugment.add(str(year))
-    reply = 'Got it! What year are you in?'
-    bot.send_message(id, reply, reply_markup=keyAugment)
-    bot.register_next_step_handler(message, yearHandler, signupData)
+    if testFaculty in faculties:
+        signupData['faculty'] = testFaculty 
+        keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+        for year in range(1, 6):
+            keyAugment.add(str(year))
+        reply = 'Got it! What year are you in?'
+        bot.send_message(id, reply, reply_markup=keyAugment)
+        bot.register_next_step_handler(message, yearHandler, signupData)
+    else:
+        reply = 'You have entered an invalid faculty! Please try again.'
+        keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+        for faculty in faculties:
+            keyAugment.add(faculty)
+        bot.send_message(id, reply, reply_markup=keyAugment)
+        bot.register_next_step_handler(message, facultyHandler, signupData)
 
 def yearHandler(message, signupData):
-    signupData['year'] = message.text
     id = message.chat.id
-    reply = "What's your NUSNET ID? This is the ID that begins with 'E', followed by 7 digits."
-    bot.send_message(id, reply)
-    bot.register_next_step_handler(message, signupCompleteHandler, signupData)
+    testYear = str(message.text)
+    years = ['1', '2', '3', '4', '5']
+    if testYear in years:
+        signupData['year'] = testYear
+        reply = "What's your NUSNET ID? This is the ID that begins with 'E', followed by 7 digits."
+        bot.send_message(id, reply)
+        bot.register_next_step_handler(message, signupCompleteHandler, signupData)
+    else:
+        reply = 'You have entered an invalid year! Please try again.'
+        keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+        for year in range(1, 6):
+            keyAugment.add(str(year))
+        bot.send_message(id, reply, reply_markup=keyAugment)
+        bot.register_next_step_handler(message, yearHandler, signupData)
 
 def signupCompleteHandler(message, signupData):
     testId = str(message.text).lower()
     id = message.chat.id
     reply = ''
     if testId.startswith('e') and len(testId) == 8 and testId[1:7].isnumeric():
-        signupData['nusnet_id'] = message.text
+        signupData['nusnet_id'] = testId
         try:
             response = requests.post(f"{apiServerUrl}users/add", signupData)
             if response.status_code == 200:
