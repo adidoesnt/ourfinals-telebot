@@ -71,9 +71,9 @@ def signupStartHandler(message):
 
 def facultyHandler(message, signupData):
     testFaculty = str(message.text).lower()
+    id = message.chat.id
     if testFaculty in faculties:
         signupData['faculty'] = testFaculty 
-        id = message.chat.id
         keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         for year in range(1, 6):
             keyAugment.add(str(year))
@@ -89,11 +89,11 @@ def facultyHandler(message, signupData):
         bot.register_next_step_handler(message, facultyHandler, signupData)
 
 def yearHandler(message, signupData):
+    id = message.chat.id
     testYear = str(message.text)
     years = ['1', '2', '3', '4', '5']
     if testYear in years:
         signupData['year'] = testYear
-        id = message.chat.id
         reply = "What's your NUSNET ID? This is the ID that begins with 'E', followed by 7 digits."
         bot.send_message(id, reply)
         bot.register_next_step_handler(message, signupCompleteHandler, signupData)
