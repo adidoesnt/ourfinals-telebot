@@ -1,0 +1,5 @@
+faculties = [
+    "computing",
+    "engineering",
+    "science"
+]
