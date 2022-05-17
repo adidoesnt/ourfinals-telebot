@@ -163,6 +163,32 @@ def viewProfileHandler(message):
     bot.send_message(id, reply)
     mainMenu(message)
 
+def addAssignmentHandler(message):
+    id = message.chat.id
+    reply = "Are you sure you want to add a new assignment?"
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    keyAugment.add('yes', 'no')
+    bot.send_message(id, reply, reply_markup=keyAugment)
+    bot.register_next_step_handler(addAssignmentStartHandler)
+
+def addAssignmentStartHandler(message):
+    id = message.chat.id
+    assignmentData = {}
+    if message.text == 'yes':
+        reply = "Great! Enter the module code for the assignment."
+        bot.send_message(id, message, reply_markup=forceReply)
+        bot.register_next_step_handler(message, moduleCodeHandler, assignmentData)
+    elif message.text == 'no':
+        mainMenu(message)
+    else:
+        reply = "I didn't catch that."
+        bot.send_message(id, reply)
+        mainMenu(message)
+
+def moduleCodeHandler(message, assignmentData):
+    #make an API call to NUSMods to see if a valid module code was entered
+    return (message, assignmentData)
+
 ### polling
 if __name__ == "__main__":
     bot.polling()
