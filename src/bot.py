@@ -11,6 +11,8 @@ from flask import Flask
 from decouple import config
 from data.data import *
 
+from utils import *
+
 ### config variables
 port = int(os.environ.get('PORT', '8080'))
 bot_apiKey = config('of_apiKey')
@@ -56,9 +58,7 @@ def mainMenu(message):
 def menuOptionsHandler(message):
     id = message.chat.id
     if message.text == 'view profile':
-        reply = 'This feature is a work in progress.'
-        bot.send_message(id, reply)
-        mainMenu(message)
+        viewProfileHandler(message)
     elif message.text == 'add an assignment':
         reply = 'This feature is a work in progress.'
         bot.send_message(id, reply)
@@ -153,6 +153,15 @@ def signupCompleteHandler(message, signupData):
         reply = 'You have entered an invalid NUSNET ID! Please try again.'
         bot.send_message(id, reply)
         bot.register_next_step_handler(message, signupCompleteHandler, signupData)
+
+### Functional Handlers
+def viewProfileHandler(message):
+    username = message.chat.username
+    id = message.chat.id
+    response = requests.get(f"{apiServerUrl}users/{username}")
+    reply = formatUserData(response)
+    bot.send_message(id, reply)
+    mainMenu(message)
 
 ### polling
 if __name__ == "__main__":
