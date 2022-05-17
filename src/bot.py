@@ -31,7 +31,7 @@ def startHandler(message):
     id = message.chat.id
     response = requests.get(f"{apiServerUrl}users/{username}")
     greeting = ''
-    if response.text == '':
+    if response.status_code == 404:
         greeting = f"Hello, and welcome to OurFinals! Would you like me to sign you up?"
         keyAugment.add('yes')
         keyAugment.add('no')
@@ -39,15 +39,40 @@ def startHandler(message):
         bot.register_next_step_handler(message, signupStartHandler)
     else:
         greeting = f"Welcome back {username}! How can I help you?"
-        keyAugment.add('view profile')
+        keyAugment.add('view profile', 'add an assignment', 'teach an assignment')
         bot.send_message(id, greeting, reply_markup=keyAugment)
+        bot.register_next_step_handler(message, menuOptionsHandler)
 
+### Menu Handlers
 def mainMenu(message):
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     username = message.chat.username
     id = message.chat.id
     prompt = f"How can I help you, {username}?"
-    bot.send_message(id, prompt)
+    keyAugment.add('view profile', 'add an assignment', 'teach an assignment')
+    bot.send_message(id, prompt, reply_markup=keyAugment)
+    bot.register_next_step_handler(message, menuOptionsHandler)
 
+def menuOptionsHandler(message):
+    id = message.chat.id
+    if message.text == 'view profile':
+        reply = 'This feature is a work in progress.'
+        bot.send_message(id, reply)
+        mainMenu(message)
+    elif message.text == 'add an assignment':
+        reply = 'This feature is a work in progress.'
+        bot.send_message(id, reply)
+        mainMenu(message)
+    elif message.text == 'teach an assignment':
+        reply = 'This feature is a work in progress.'
+        bot.send_message(id, reply)
+        mainMenu(message)
+    else:
+        reply = "You've selected an invalid option, please try again"
+        bot.send_message(id, reply)
+        mainMenu(message)
+
+### Signup Handlers
 def signupStartHandler(message):
     id = message.chat.id
     signupData = {
