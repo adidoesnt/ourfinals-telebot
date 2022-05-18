@@ -231,7 +231,7 @@ def descriptionHandler(message, assignmentData):
         invalidDescriptionHandler(message, assignmentData)
     else:
         assignmentData['description'] = test_description
-        reply = "Add a link to a supporting to document for the assignment"
+        reply = "Add a link to a supporting to document for the assignment. Make sure link-sharing is enabled."
         bot.send_message(id, reply)
         bot.register_next_step_handler(message, fileHandler, assignmentData)
 
@@ -241,7 +241,22 @@ def invalidDescriptionHandler(message, assignmentData):
     bot.register_next_step_handler(message, descriptionHandler, assignmentData)
 
 def fileHandler(message, assignmentData):
-    return
+    id = message.chat.id
+    test_file_link = message.text
+    if test_file_link == '':
+        reply = "You've entered an invalid file link, please try again."
+        bot.send_message(id, reply, reply_markup=forceReply)
+        invalidFileHandler(message, assignmentData)
+    else:
+        assignmentData['file_link'] = test_file_link
+        reply = "You're all set! Potential tutors will see your assignment shortly."
+        bot.send_message(id, reply)
+        mainMenu(message)
+
+def invalidFileHandler(message, assignmentData):
+    reply = "Add a link to a supporting to document for the assignment. Make sure link-sharing is enabled."
+    bot.send_message(id, reply, reply_markup=forceReply)
+    bot.register_next_step_handler(message, fileHandler, assignmentData)
 
 ### polling
 if __name__ == "__main__":
