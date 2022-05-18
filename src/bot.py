@@ -189,7 +189,7 @@ def addAssignmentStartHandler(message):
 def moduleCodeHandler(message, assignmentData):
     # make an API call to NUSMods to see if a valid module code was entered
     id = message.chat.id
-    test_module_code = message.text
+    test_module_code = message.text.upper()
     response = requests.get(f"{nusModsUrl}{test_module_code}.json")
     if response.status_code == 404:
         reply = 'You have entered an invalid module code, please try again.'
