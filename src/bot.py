@@ -32,7 +32,8 @@ def startHandler(message):
     keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     username = message.chat.username
     id = message.chat.id
-    response = requests.get(f"{apiServerUrl}users/{username}")
+    headers = {'x-api-key': config('server_apiKey')}
+    response = requests.get(f"{apiServerUrl}users/{username}", None, headers=headers)
     greeting = ''
     if response.status_code == 404:
         greeting = f"Hello, and welcome to OurFinals! Would you like me to sign you up?"
@@ -200,6 +201,7 @@ def moduleCodeHandler(message, assignmentData):
         bot.register_next_step_handler(message, titleHandler, assignmentData)
 
 def invalidModuleCodeHandler(message, assignmentData):
+    id = message.chat.id
     reply = "Enter the module code for the assignment."
     bot.send_message(id, reply, reply_markup=forceReply)
     bot.register_next_step_handler(message, moduleCodeHandler, assignmentData)
@@ -218,6 +220,7 @@ def titleHandler(message, assignmentData):
         bot.register_next_step_handler(message, descriptionHandler, assignmentData)
 
 def invalidTitleHandler(message, assignmentData):
+    id = message.chat.id
     reply = "Enter the title for the assignment."
     bot.send_message(id, reply, reply_markup=forceReply)
     bot.register_next_step_handler(message, titleHandler, assignmentData)
@@ -236,6 +239,7 @@ def descriptionHandler(message, assignmentData):
         bot.register_next_step_handler(message, fileHandler, assignmentData)
 
 def invalidDescriptionHandler(message, assignmentData):
+    id = message.chat.id
     reply = "Enter a description for the assignment."
     bot.send_message(id, reply, reply_markup=forceReply)
     bot.register_next_step_handler(message, descriptionHandler, assignmentData)
@@ -252,16 +256,18 @@ def fileHandler(message, assignmentData):
         addAssignmentCompleteHandler(message, assignmentData)
 
 def invalidFileHandler(message, assignmentData):
+    id = message.chat.id
     reply = "Add a link to a supporting to document for the assignment. Make sure link-sharing is enabled."
     bot.send_message(id, reply, reply_markup=forceReply)
     bot.register_next_step_handler(message, fileHandler, assignmentData)
 
 def addAssignmentCompleteHandler(message, assignmentData):
+    id = message.chat.id
     username = message.chat.username
     assignmentData['student_username'] = username
     assignmentData['tutor_username'] = ''
-    print(assignmentData)
-    response = requests.post(f"{apiServerUrl}assignments/add", assignmentData)
+    headers = {'x-api-key': config('server_apiKey')}
+    response = requests.post(f"{apiServerUrl}assignments/add", assignmentData, headers=headers)
     if response.status_code == 200:
         reply = "You're all set! Potential tutors will see your assignment shortly."
         bot.send_message(id, reply)
