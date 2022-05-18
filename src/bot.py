@@ -249,14 +249,26 @@ def fileHandler(message, assignmentData):
         invalidFileHandler(message, assignmentData)
     else:
         assignmentData['file_link'] = test_file_link
-        reply = "You're all set! Potential tutors will see your assignment shortly."
-        bot.send_message(id, reply)
-        mainMenu(message)
+        addAssignmentCompleteHandler(message, assignmentData)
 
 def invalidFileHandler(message, assignmentData):
     reply = "Add a link to a supporting to document for the assignment. Make sure link-sharing is enabled."
     bot.send_message(id, reply, reply_markup=forceReply)
     bot.register_next_step_handler(message, fileHandler, assignmentData)
+
+def addAssignmentCompleteHandler(message, assignmentData):
+    username = message.chat.username
+    assignmentData['student_username'] = username
+    assignmentData['tutor_username'] = ''
+    print(assignmentData)
+    response = requests.post(f"{apiServerUrl}assignments/add", assignmentData)
+    if response.status_code == 200:
+        reply = "You're all set! Potential tutors will see your assignment shortly."
+        bot.send_message(id, reply)
+    else:
+        reply = 'We were unable to add your assignment, please try again later.'
+        bot.send_message(id, reply)
+    mainMenu(message)
 
 ### polling
 if __name__ == "__main__":
