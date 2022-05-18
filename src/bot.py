@@ -19,6 +19,7 @@ bot_apiKey = config('of_apiKey')
 bot = telebot.TeleBot(bot_apiKey)
 server = Flask(__name__)
 apiServerUrl = 'https://ourfinals-telebot-server.herokuapp.com/'
+nusModsUrl = 'https://api.nusmods.com/v2/modules/'
 
 ### global variables
 types = telebot.types
@@ -175,8 +176,8 @@ def addAssignmentStartHandler(message):
     id = message.chat.id
     assignmentData = {}
     if message.text == 'yes':
-        reply = "Great! Enter the module code for the assignment."
-        bot.send_message(id, message, reply_markup=forceReply)
+        reply = "Enter the module code for the assignment."
+        bot.send_message(id, reply, reply_markup=forceReply)
         bot.register_next_step_handler(message, moduleCodeHandler, assignmentData)
     elif message.text == 'no':
         mainMenu(message)
@@ -186,7 +187,26 @@ def addAssignmentStartHandler(message):
         mainMenu(message)
 
 def moduleCodeHandler(message, assignmentData):
-    #make an API call to NUSMods to see if a valid module code was entered
+    # make an API call to NUSMods to see if a valid module code was entered
+    id = message.chat.id
+    test_module_code = message.text
+    response = requests.get(f"{nusModsUrl}{test_module_code}.json")
+    if response.status_code == 404:
+        reply = 'You have entered an invalid module code, please try again.'
+        bot.send_message(id, reply_markup=forceReply)
+        invalidModuleCodeHandler(message, assignmentData)
+    else :
+        assignmentData['module_code'] = test_module_code
+        reply = "Enter the title for the assignment."
+        bot.send_message(id, reply)
+        bot.register_next_step_handler(message, titleHandler, assignmentData)
+
+def invalidModuleCodeHandler(message, assignmentData):
+    reply = "Enter the module code for the assignment."
+    bot.send_message(id, reply, reply_markup=forceReply)
+    bot.register_next_step_handler(message, moduleCodeHandler, assignmentData)
+
+def titleHandler(message, assignmentData):
     return (message, assignmentData)
 
 ### polling
