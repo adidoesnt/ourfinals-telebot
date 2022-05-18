@@ -19,7 +19,7 @@ bot_apiKey = config('of_apiKey')
 bot = telebot.TeleBot(bot_apiKey)
 server = Flask(__name__)
 apiServerUrl = 'https://ourfinals-telebot-server.herokuapp.com/'
-nusModsUrl = 'https://api.nusmods.com/v2/modules/'
+nusModsUrl = 'https://api.nusmods.com/v2/2021-2022/modules/'
 
 ### global variables
 types = telebot.types
@@ -61,9 +61,7 @@ def menuOptionsHandler(message):
     if message.text == 'view profile':
         viewProfileHandler(message)
     elif message.text == 'add an assignment':
-        reply = 'This feature is a work in progress.'
-        bot.send_message(id, reply)
-        mainMenu(message)
+        addAssignmentHandler(message)
     elif message.text == 'teach an assignment':
         reply = 'This feature is a work in progress.'
         bot.send_message(id, reply)
@@ -170,7 +168,7 @@ def addAssignmentHandler(message):
     keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     keyAugment.add('yes', 'no')
     bot.send_message(id, reply, reply_markup=keyAugment)
-    bot.register_next_step_handler(addAssignmentStartHandler)
+    bot.register_next_step_handler(message, addAssignmentStartHandler)
 
 def addAssignmentStartHandler(message):
     id = message.chat.id
@@ -193,7 +191,7 @@ def moduleCodeHandler(message, assignmentData):
     response = requests.get(f"{nusModsUrl}{test_module_code}.json")
     if response.status_code == 404:
         reply = 'You have entered an invalid module code, please try again.'
-        bot.send_message(id, reply_markup=forceReply)
+        bot.send_message(id, reply, reply_markup=forceReply)
         invalidModuleCodeHandler(message, assignmentData)
     else :
         assignmentData['module_code'] = test_module_code
@@ -207,7 +205,25 @@ def invalidModuleCodeHandler(message, assignmentData):
     bot.register_next_step_handler(message, moduleCodeHandler, assignmentData)
 
 def titleHandler(message, assignmentData):
-    return (message, assignmentData)
+    id = message.chat.id
+    test_title = message.text
+    if test_title == '':
+        reply = "You've entered an invalid title, please try again."
+        bot.send_message(id, reply, reply_markup=forceReply)
+        invalidTitleHandler(message, assignmentData)
+    else:
+        assignmentData['title'] = test_title
+        reply = "Enter a description for the assignment."
+        bot.send_message(id, reply)
+        bot.register_next_step_handler(message, descriptionHandler, assignmentData)
+
+def invalidTitleHandler(message, assignmentData):
+    reply = "Enter the title for the assignment."
+    bot.send_message(id, reply, reply_markup=forceReply)
+    bot.register_next_step_handler(message, titleHandler, assignmentData)
+
+def descriptionHandler(message, assignmentData):
+    return
 
 ### polling
 if __name__ == "__main__":
