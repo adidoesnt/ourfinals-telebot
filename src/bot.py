@@ -223,6 +223,24 @@ def invalidTitleHandler(message, assignmentData):
     bot.register_next_step_handler(message, titleHandler, assignmentData)
 
 def descriptionHandler(message, assignmentData):
+    id = message.chat.id
+    test_description = message.text
+    if test_description == '':
+        reply = "You've entered an invalid description, please try again."
+        bot.send_message(id, reply, reply_markup=forceReply)
+        invalidDescriptionHandler(message, assignmentData)
+    else:
+        assignmentData['description'] = test_description
+        reply = "Add a link to a supporting to document for the assignment"
+        bot.send_message(id, reply)
+        bot.register_next_step_handler(message, fileHandler, assignmentData)
+
+def invalidDescriptionHandler(message, assignmentData):
+    reply = "Enter a description for the assignment."
+    bot.send_message(id, reply, reply_markup=forceReply)
+    bot.register_next_step_handler(message, descriptionHandler, assignmentData)
+
+def fileHandler(message, assignmentData):
     return
 
 ### polling
