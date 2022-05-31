@@ -3,7 +3,6 @@
 ###               V1.0.0 (DEV) - 2 MAY 2022              ###
 
 ### dependencies
-from operator import add
 import os
 import telebot
 import requests
