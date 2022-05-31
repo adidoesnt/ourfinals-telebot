@@ -3,6 +3,7 @@
 ###               V1.0.0 (DEV) - 2 MAY 2022              ###
 
 ### dependencies
+from operator import add
 import os
 import telebot
 import requests
@@ -84,7 +85,7 @@ def signupStartHandler(message):
     reply = ''
     if message.text == 'yes':
         keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        reply = "Great! What faculty are you in?"
+        reply = "What faculty are you in?"
         for faculty in faculties:
             keyAugment.add(faculty)
         bot.send_message(id, reply, reply_markup=keyAugment)
@@ -136,7 +137,8 @@ def signupCompleteHandler(message, signupData):
     if testId.startswith('e') and len(testId) == 8 and testId[1:7].isnumeric():
         signupData['nusnet_id'] = testId
         try:
-            response = requests.post(f"{apiServerUrl}users/add", signupData)
+            headers = {'x-api-key': config('server_apiKey')}
+            response = requests.post(f"{apiServerUrl}users/add", signupData, headers=headers)
             if response.status_code == 200:
                 reply = 'Welcome to OurFinals!'
                 bot.send_message(id, reply)
@@ -144,10 +146,12 @@ def signupCompleteHandler(message, signupData):
             else:
                 reply = 'I was unable to sign you up... Please try again.'
                 bot.send_message(id, reply)
+                message.text = 'yes'
                 signupStartHandler(message)
         except:
             reply = 'I was unable to sign you up... Please try again.'
             bot.send_message(id, reply)
+            message.text = 'yes'
             signupStartHandler(message)
     else:
         reply = 'You have entered an invalid NUSNET ID! Please try again.'
@@ -267,14 +271,21 @@ def addAssignmentCompleteHandler(message, assignmentData):
     assignmentData['student_username'] = username
     assignmentData['tutor_username'] = ''
     headers = {'x-api-key': config('server_apiKey')}
-    response = requests.post(f"{apiServerUrl}assignments/add", assignmentData, headers=headers)
-    if response.status_code == 200:
+    assignment_res = requests.post(f"{apiServerUrl}assignments/add", assignmentData, headers=headers)
+    user_res = addAssignmentToUser(username, assignment_res.json()['_id'], headers);
+    if assignment_res.status_code == 200 and user_res.status_code == 200:
         reply = "You're all set! Potential tutors will see your assignment shortly."
         bot.send_message(id, reply)
     else:
         reply = 'We were unable to add your assignment, please try again later.'
         bot.send_message(id, reply)
     mainMenu(message)
+
+def addAssignmentToUser(username, assignment_id, headers):
+    response = requests.post(f"{apiServerUrl}users/{username}/assignments_as_student/add", {
+        '_id': assignment_id
+    }, headers=headers)
+    return response
 
 ### polling
 if __name__ == "__main__":
