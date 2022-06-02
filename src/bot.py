@@ -287,8 +287,59 @@ def addAssignmentToUser(username, assignment_id, headers):
 
 ### Functional Handlers - Teach Assignment
 def teachAssignmentHandler(message):
-    print('work in progress')
-    return
+    id = message.chat.id
+    reply = "Are you sure you want to teach an assignment?"
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    keyAugment.add('yes', 'no')
+    bot.send_message(id, reply, reply_markup=keyAugment)
+    bot.register_next_step_handler(message, teachAssignmentStartHandler)
+
+def teachAssignmentStartHandler(message):
+    id = message.chat.id
+    reply = "Which module would you like to view assignments from? Please enter a module code."
+    bot.send_message(id, reply, reply_markup=forceReply)
+    bot.register_next_step_handler(message, fetchAssignments)
+
+def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
+    id = message.chat.id
+    if initial:
+        code = str(message.text).upper()
+        headers = {'x-api-key': config('server_apiKey')}
+        response = requests.get(f"{apiServerUrl}assignments/code/{code}", headers=headers)
+        assignments = list(response.json())
+    else:
+        code = repeat_code
+    current_assignments = assignments
+    if len(assignments) > 5:
+        current_assignments = assignments[:5]
+        assignments = assignments[5:]
+    reply = f"Here are some assignments from {code}:"
+    for assignment in current_assignments:
+        reply += f"\n\n{formatAssignmentData(assignment)}"
+    reply += f"\n\nWhat would you like to do?"
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    keyAugment.add('Teach one of these assignments')
+    if len(assignments) > 5:
+        keyAugment.add('View more assignments')
+    keyAugment.add('Exit')
+    bot.send_message(id, reply, reply_markup=keyAugment)
+    bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, assignments, code)
+
+def fetchAssignmentsLoopHandler(message, assignments, code):
+    id = message.chat.id
+    option = message.text
+    if option == 'Teach one of these assignments':
+        print('work in progress')
+    elif option == 'View more assignments':
+        fetchAssignments(message, assignments, False, code)
+    elif option == 'Exit':
+        reply = 'See you around!'
+        bot.send_message(id, reply)
+        mainMenu(message)
+    else:
+        reply = 'You have chosen an invalid option, please try again.'
+        bot.send_message(id, reply)
+        mainMenu(message)
 
 ### polling
 if __name__ == "__main__":
