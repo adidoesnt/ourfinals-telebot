@@ -159,7 +159,8 @@ def signupCompleteHandler(message, signupData):
 def viewProfileHandler(message):
     username = message.chat.username
     id = message.chat.id
-    response = requests.get(f"{apiServerUrl}users/{username}")
+    headers = {'x-api-key': config('server_apiKey')}
+    response = requests.get(f"{apiServerUrl}users/{username}", None, headers=headers)
     reply = formatUserData(response)
     bot.send_message(id, reply)
     mainMenu(message)
