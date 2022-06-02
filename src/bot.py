@@ -64,9 +64,7 @@ def menuOptionsHandler(message):
     elif message.text == 'add an assignment':
         addAssignmentHandler(message)
     elif message.text == 'teach an assignment':
-        reply = 'This feature is a work in progress.'
-        bot.send_message(id, reply)
-        mainMenu(message)
+        teachAssignmentHandler(message)
     else:
         reply = "You've selected an invalid option, please try again"
         bot.send_message(id, reply)
@@ -157,7 +155,7 @@ def signupCompleteHandler(message, signupData):
         bot.send_message(id, reply)
         bot.register_next_step_handler(message, signupCompleteHandler, signupData)
 
-### Functional Handlers
+### Functional Handlers - View Profile
 def viewProfileHandler(message):
     username = message.chat.username
     id = message.chat.id
@@ -166,6 +164,7 @@ def viewProfileHandler(message):
     bot.send_message(id, reply)
     mainMenu(message)
 
+### Functional Handlers - Add Assignment
 def addAssignmentHandler(message):
     id = message.chat.id
     reply = "Are you sure you want to add a new assignment?"
@@ -285,6 +284,11 @@ def addAssignmentToUser(username, assignment_id, headers):
         '_id': assignment_id
     }, headers=headers)
     return response
+
+### Functional Handlers - Teach Assignment
+def teachAssignmentHandler(message):
+    print('work in progress')
+    return
 
 ### polling
 if __name__ == "__main__":
