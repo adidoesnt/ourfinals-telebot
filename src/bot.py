@@ -7,7 +7,7 @@ import os
 import telebot
 import requests
 
-from flask import Flask
+from flask import Flask, request
 from decouple import config
 from data.data import *
 
@@ -388,6 +388,18 @@ def validateAssignmentSelection(message, assignments):
                 bot.send_message(id, reply)
                 mainMenu(message)
 
-### polling
+@server.route('/' + bot_apiKey, methods=['POST'])
+def getMessage():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
+@server.route("/")
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='https://ourfinals-telebot.herokuapp.com/' + bot_apiKey)
+    return "!", 200
+
 if __name__ == "__main__":
-    bot.polling()
+    server.run(host="0.0.0.0", port=int(os.environ.get('port', 8080)))
