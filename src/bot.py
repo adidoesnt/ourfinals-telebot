@@ -1,6 +1,6 @@
 ###                OURFINALS TELEGRAM BOT                ###
 ### AUTHORED BY ADITYA BANERJEE AND ANSEL CHEUNG HENG YU ###
-###               V1.0.0 (DEV) - 2 MAY 2022              ###
+###              V1.0.1 (TEST) - 2 MAY 2022              ###
 
 ### dependencies
 import os
@@ -301,6 +301,7 @@ def teachAssignmentStartHandler(message):
     bot.register_next_step_handler(message, fetchAssignments)
 
 def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
+    # TODO: handle case where there are no assignments
     id = message.chat.id
     if initial:
         code = str(message.text).upper()
@@ -314,25 +315,27 @@ def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
         current_assignments = assignments[:5]
         assignments = assignments[5:]
     reply = f"Here are some assignments from {code}:"
+    index = 0
     for assignment in current_assignments:
-        reply += f"\n\n{formatAssignmentData(assignment)}"
+        index+=1
+        reply += f"\n\n{index}: {formatAssignmentData(assignment)}"
     reply += f"\n\nWhat would you like to do?"
     keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-    keyAugment.add('Teach one of these assignments')
+    keyAugment.add('teach one of these assignments')
     if len(assignments) > 5:
-        keyAugment.add('View more assignments')
-    keyAugment.add('Exit')
+        keyAugment.add('view more assignments')
+    keyAugment.add('exit')
     bot.send_message(id, reply, reply_markup=keyAugment)
-    bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, assignments, code)
+    bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, current_assignments, assignments, code)
 
-def fetchAssignmentsLoopHandler(message, assignments, code):
+def fetchAssignmentsLoopHandler(message, current_assignments, assignments, code):
     id = message.chat.id
     option = message.text
-    if option == 'Teach one of these assignments':
-        print('work in progress')
-    elif option == 'View more assignments':
+    if option == 'teach one of these assignments':
+        selectAssignment(message, current_assignments)
+    elif option == 'view more assignments':
         fetchAssignments(message, assignments, False, code)
-    elif option == 'Exit':
+    elif option == 'exit':
         reply = 'See you around!'
         bot.send_message(id, reply)
         mainMenu(message)
@@ -340,6 +343,50 @@ def fetchAssignmentsLoopHandler(message, assignments, code):
         reply = 'You have chosen an invalid option, please try again.'
         bot.send_message(id, reply)
         mainMenu(message)
+
+def selectAssignment(message, assignments):
+    id = message.chat.id
+    reply = 'Which assignment would you like to teach?'
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    for i in range(1, len(assignments) + 1):
+        keyAugment.add(str(i))
+    bot.send_message(id, reply, reply_markup=keyAugment)
+    bot.register_next_step_handler(message, validateAssignmentSelection, assignments)
+
+def validateAssignmentSelection(message, assignments):
+    id = message.chat.id
+    username = message.chat.username
+    index = int(message.text)
+    if index not in range(1, len(assignments) + 1):
+        reply = 'You have entered an invalid selection, please try again.'
+        bot.send_message(id, reply)
+        mainMenu(message)
+    else:
+        test_assignment = assignments[index - 1]
+        student_username = test_assignment['student_username']
+        module_code = test_assignment["module_code"]
+        if student_username == username:
+            reply = 'You cannot be the tutor for your own assignment, please try again.'
+            bot.send_message(id, reply)
+            mainMenu(message)
+        else:
+            assignment_id = test_assignment["_id"]
+            headers = {'x-api-key': config('server_apiKey')}
+            response = requests.post(f"{apiServerUrl}assignments/id/{assignment_id}/tutor/add", {
+                "tutor_username": username
+            }, headers=headers)
+            if response.status_code == 200:
+                reply = f"You have been added as the tutor for @{student_username}'s {module_code} assignment!"
+                student_message = f"@{username} has been added as the tutor for your {module_code} assignment!"
+                student_response = requests.get(f"{apiServerUrl}users/{student_username}", headers=headers)
+                student = student_response.json()
+                student_chat_id = student['chat_id']
+                bot.send_message(id, reply)
+                bot.send_message(student_chat_id, student_message)
+            else:
+                reply = "Sorry, something went wrong. Please try again later."
+                bot.send_message(id, reply)
+                mainMenu(message)
 
 ### polling
 if __name__ == "__main__":
