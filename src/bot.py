@@ -37,13 +37,12 @@ def startHandler(message):
     greeting = ''
     if response.status_code == 404:
         greeting = f"Hello, and welcome to OurFinals! Would you like me to sign you up?"
-        keyAugment.add('yes')
-        keyAugment.add('no')
+        keyAugment.add('yes', 'no')
         bot.send_message(id, greeting, reply_markup=keyAugment)
         bot.register_next_step_handler(message, signupStartHandler)
     else:
         greeting = f"Welcome back {username}! How can I help you?"
-        keyAugment.add('view profile', 'add an assignment', 'teach an assignment')
+        keyAugment.add('view profile', 'add an assignment', 'teach an assignment', 'exit')
         bot.send_message(id, greeting, reply_markup=keyAugment)
         bot.register_next_step_handler(message, menuOptionsHandler)
 
@@ -53,7 +52,7 @@ def mainMenu(message):
     username = message.chat.username
     id = message.chat.id
     prompt = f"How can I help you, {username}?"
-    keyAugment.add('view profile', 'add an assignment', 'teach an assignment')
+    keyAugment.add('view profile', 'add an assignment', 'teach an assignment', 'exit')
     bot.send_message(id, prompt, reply_markup=keyAugment)
     bot.register_next_step_handler(message, menuOptionsHandler)
 
@@ -65,10 +64,17 @@ def menuOptionsHandler(message):
         addAssignmentHandler(message)
     elif message.text == 'teach an assignment':
         teachAssignmentHandler(message)
+    elif message.text == 'exit':
+        exitHandler(message)
     else:
         reply = "You've selected an invalid option, please try again"
         bot.send_message(id, reply)
         mainMenu(message)
+
+def exitHandler(message):
+    id = message.chat.id
+    reply = "You can use /start to pull up the main menu again whenever you'd like. See you around!"
+    bot.send_message(id, reply)
 
 ### Signup Handlers
 def signupStartHandler(message):
