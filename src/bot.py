@@ -322,20 +322,19 @@ def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
         bot.send_message(id, reply)
         mainMenu(message)
     else:
+        keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+        keyAugment.add('teach one of these assignments')
         if len(assignments) > 5:
+            keyAugment.add('view more assignments')
             current_assignments = assignments[:5]
             assignments = assignments[5:]
+        keyAugment.add('exit')
         reply = f"Here are some assignments from {code}:"
         index = 0
         for assignment in current_assignments:
             index+=1
             reply += f"\n\n{index}: {formatAssignmentData(assignment)}"
         reply += f"\n\nWhat would you like to do?"
-        keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-        keyAugment.add('teach one of these assignments')
-        if len(assignments) > 5:
-            keyAugment.add('view more assignments')
-        keyAugment.add('exit')
         bot.send_message(id, reply, reply_markup=keyAugment)
         bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, current_assignments, assignments, code)
 
