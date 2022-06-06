@@ -308,7 +308,6 @@ def teachAssignmentStartHandler(message):
     bot.register_next_step_handler(message, fetchAssignments)
 
 def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
-    # TODO: handle case where there are no assignments
     id = message.chat.id
     if initial:
         code = str(message.text).upper()
@@ -318,22 +317,27 @@ def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
     else:
         code = repeat_code
     current_assignments = assignments
-    if len(assignments) > 5:
-        current_assignments = assignments[:5]
-        assignments = assignments[5:]
-    reply = f"Here are some assignments from {code}:"
-    index = 0
-    for assignment in current_assignments:
-        index+=1
-        reply += f"\n\n{index}: {formatAssignmentData(assignment)}"
-    reply += f"\n\nWhat would you like to do?"
-    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-    keyAugment.add('teach one of these assignments')
-    if len(assignments) > 5:
-        keyAugment.add('view more assignments')
-    keyAugment.add('exit')
-    bot.send_message(id, reply, reply_markup=keyAugment)
-    bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, current_assignments, assignments, code)
+    if len(assignments) == 0:
+        reply = f"There are no assignments from {code} right now, please try again later."
+        bot.send_message(id, reply)
+        mainMenu(message)
+    else:
+        if len(assignments) > 5:
+            current_assignments = assignments[:5]
+            assignments = assignments[5:]
+        reply = f"Here are some assignments from {code}:"
+        index = 0
+        for assignment in current_assignments:
+            index+=1
+            reply += f"\n\n{index}: {formatAssignmentData(assignment)}"
+        reply += f"\n\nWhat would you like to do?"
+        keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+        keyAugment.add('teach one of these assignments')
+        if len(assignments) > 5:
+            keyAugment.add('view more assignments')
+        keyAugment.add('exit')
+        bot.send_message(id, reply, reply_markup=keyAugment)
+        bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, current_assignments, assignments, code)
 
 def fetchAssignmentsLoopHandler(message, current_assignments, assignments, code):
     id = message.chat.id
