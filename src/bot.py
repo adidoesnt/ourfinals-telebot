@@ -33,7 +33,7 @@ def startHandler(message):
     username = message.chat.username
     id = message.chat.id
     headers = {'x-api-key': config('server_apiKey')}
-    response = requests.get(f"{apiServerUrl}users/{username}", None, headers=headers)
+    response = requests.get(f"{apiServerUrl}users/username/{username}", None, headers=headers)
     greeting = ''
     if response.status_code == 404:
         greeting = f"Hello, and welcome to OurFinals! Would you like me to sign you up?"
@@ -166,7 +166,7 @@ def viewProfileHandler(message):
     username = message.chat.username
     id = message.chat.id
     headers = {'x-api-key': config('server_apiKey')}
-    response = requests.get(f"{apiServerUrl}users/{username}", None, headers=headers)
+    response = requests.get(f"{apiServerUrl}users/username/{username}", None, headers=headers)
     reply = formatUserData(response)
     bot.send_message(id, reply)
     mainMenu(message)
@@ -184,9 +184,10 @@ def addAssignmentStartHandler(message):
     id = message.chat.id
     username = message.chat.username
     headers = {'x-api-key': config('server_apiKey')}
-    response = requests.get(f"{apiServerUrl}users/{username}", None, headers=headers)
+    response = requests.get(f"{apiServerUrl}users/username/{username}", None, headers=headers)
+    student = response.json()
     assignmentData = {
-        "faculty": response["faculty"]
+        "faculty": student["faculty"]
     }
     if message.text == 'yes':
         reply = "Enter the module code for the assignment."
@@ -282,14 +283,64 @@ def addAssignmentCompleteHandler(message, assignmentData):
     assignmentData['tutor_username'] = ''
     headers = {'x-api-key': config('server_apiKey')}
     assignment_res = requests.post(f"{apiServerUrl}assignments/add", assignmentData, headers=headers)
+    assignment_id = assignment_res.json()["_id"]
     user_res = addAssignmentToUser(username, assignment_res.json()['_id'], headers);
     if assignment_res.status_code == 200 and user_res.status_code == 200:
         reply = "You're all set! Potential tutors will see your assignment shortly."
         bot.send_message(id, reply)
+        notifyPotentialTutors(assignmentData, assignment_id);
     else:
         reply = 'We were unable to add your assignment, please try again later.'
         bot.send_message(id, reply)
     mainMenu(message)
+    
+def notifyPotentialTutors(assignmentData, assignment_id):
+    faculty = assignmentData["faculty"]
+    username = message.chat.username
+    headers = {'x-api-key': config('server_apiKey')}
+    response = requests.get(f"{apiServerUrl}users/faculty/{faculty}", None, headers=headers)
+    for user in response:
+        if not user["username"] == username:
+            id = user["chat_id"]
+            message = f"A student from your faculty added the following assignment: {formatAssignmentData(assignmentData)}\nWould you like to teach it?"
+            keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+            keyAugment.add('yes', 'no')
+            bot.send_message(id, message)
+            bot.register_next_step_handler(message, validatePotentialTutorHandler, assignmentData, assignment_id)
+
+def validatePotentialTutorHandler(message, assignmentData, assignment_id):
+    if message.text == 'yes':
+        addPotentialTutor(message, assignmentData, assignment_id)
+    elif message.text == 'no':
+        mainMenu(message)
+    else:
+        reply = "I didn't catch that."
+        bot.send_message(id, reply)
+        mainMenu(message)
+
+def addPotentialTutor(message, assignmentData, assignment_id):
+    username = message.chat.username
+    student_username = assignmentData["student_username"]
+    module_code = assignmentData["module_code"]
+    headers = {'x-api-key': config('server_apiKey')}
+    response = requests.post(f"{apiServerUrl}assignments/id/{assignment_id}/tutor/add", {
+        "tutor_username": username
+    }, headers=headers)
+    tutor_response = requests.post(f"{apiServerUrl}/users/{username}assignments_as_tutor/add", {
+        assignment_id
+    })
+    if response.status_code == 200 and tutor_response.status_code:
+        reply = f"You have been added as the tutor for @{student_username}'s {module_code} assignment!"
+        student_message = f"@{username} has been added as the tutor for your {module_code} assignment!"
+        student_response = requests.get(f"{apiServerUrl}users/{student_username}", headers=headers)
+        student = student_response.json()
+        student_chat_id = student['chat_id']
+        bot.send_message(id, reply)
+        bot.send_message(student_chat_id, student_message)
+    else:
+        reply = "Sorry, something went wrong. Please try again later."
+        bot.send_message(id, reply)
+        mainMenu(message)
 
 def addAssignmentToUser(username, assignment_id, headers):
     response = requests.post(f"{apiServerUrl}users/{username}/assignments_as_student/add", {
@@ -317,6 +368,7 @@ def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
     if initial:
         code = str(message.text).upper()
         headers = {'x-api-key': config('server_apiKey')}
+        print(f"{apiServerUrl}assignments/code/{code}")
         response = requests.get(f"{apiServerUrl}assignments/code/{code}", headers=headers)
         assignments = list(response.json())
     else:
@@ -390,7 +442,10 @@ def validateAssignmentSelection(message, assignments):
             response = requests.post(f"{apiServerUrl}assignments/id/{assignment_id}/tutor/add", {
                 "tutor_username": username
             }, headers=headers)
-            if response.status_code == 200:
+            tutor_response = requests.post(f"{apiServerUrl}/users/{username}assignments_as_tutor/add", {
+                assignment_id
+            })
+            if response.status_code == 200 and tutor_response.status_code:
                 reply = f"You have been added as the tutor for @{student_username}'s {module_code} assignment!"
                 student_message = f"@{username} has been added as the tutor for your {module_code} assignment!"
                 student_response = requests.get(f"{apiServerUrl}users/{student_username}", headers=headers)
