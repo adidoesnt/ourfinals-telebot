@@ -288,59 +288,23 @@ def addAssignmentCompleteHandler(message, assignmentData):
     if assignment_res.status_code == 200 and user_res.status_code == 200:
         reply = "You're all set! Potential tutors will see your assignment shortly."
         bot.send_message(id, reply)
-        notifyPotentialTutors(assignmentData, assignment_id);
+        notifyPotentialTutors(message, assignmentData);
     else:
         reply = 'We were unable to add your assignment, please try again later.'
         bot.send_message(id, reply)
     mainMenu(message)
     
-def notifyPotentialTutors(assignmentData, assignment_id):
+def notifyPotentialTutors(message, assignmentData):
     faculty = assignmentData["faculty"]
     username = message.chat.username
     headers = {'x-api-key': config('server_apiKey')}
     response = requests.get(f"{apiServerUrl}users/faculty/{faculty}", None, headers=headers)
-    for user in response:
+    users = list(response.json())
+    for user in users:
         if not user["username"] == username:
             id = user["chat_id"]
-            message = f"A student from your faculty added the following assignment: {formatAssignmentData(assignmentData)}\nWould you like to teach it?"
-            keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-            keyAugment.add('yes', 'no')
-            bot.send_message(id, message)
-            bot.register_next_step_handler(message, validatePotentialTutorHandler, assignmentData, assignment_id)
-
-def validatePotentialTutorHandler(message, assignmentData, assignment_id):
-    if message.text == 'yes':
-        addPotentialTutor(message, assignmentData, assignment_id)
-    elif message.text == 'no':
-        mainMenu(message)
-    else:
-        reply = "I didn't catch that."
-        bot.send_message(id, reply)
-        mainMenu(message)
-
-def addPotentialTutor(message, assignmentData, assignment_id):
-    username = message.chat.username
-    student_username = assignmentData["student_username"]
-    module_code = assignmentData["module_code"]
-    headers = {'x-api-key': config('server_apiKey')}
-    response = requests.post(f"{apiServerUrl}assignments/id/{assignment_id}/tutor/add", {
-        "tutor_username": username
-    }, headers=headers)
-    tutor_response = requests.post(f"{apiServerUrl}/users/{username}assignments_as_tutor/add", {
-        assignment_id
-    })
-    if response.status_code == 200 and tutor_response.status_code:
-        reply = f"You have been added as the tutor for @{student_username}'s {module_code} assignment!"
-        student_message = f"@{username} has been added as the tutor for your {module_code} assignment!"
-        student_response = requests.get(f"{apiServerUrl}users/{student_username}", headers=headers)
-        student = student_response.json()
-        student_chat_id = student['chat_id']
-        bot.send_message(id, reply)
-        bot.send_message(student_chat_id, student_message)
-    else:
-        reply = "Sorry, something went wrong. Please try again later."
-        bot.send_message(id, reply)
-        mainMenu(message)
+            reply = f"A student from your faculty added an assignment!"
+            bot.send_message(id, reply)
 
 def addAssignmentToUser(username, assignment_id, headers):
     response = requests.post(f"{apiServerUrl}users/{username}/assignments_as_student/add", {
@@ -355,27 +319,56 @@ def teachAssignmentHandler(message):
     keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     keyAugment.add('yes', 'no')
     bot.send_message(id, reply, reply_markup=keyAugment)
+    bot.register_next_step_handler(message, teachAssignmentTypeHandler)
+
+def teachAssignmentTypeHandler(message):
+    id = message.chat.id
+    reply = 'You can either view assignments posted by other students from your faculty, or search for assignments by module code. What would you like to do?'
+    keyAugment = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    keyAugment.add('View assignments from my faculty', 'Search assignments by module code')
+    bot.send_message(id, reply, reply_markup=keyAugment)
     bot.register_next_step_handler(message, teachAssignmentStartHandler)
 
 def teachAssignmentStartHandler(message):
     id = message.chat.id
-    reply = "Which module would you like to view assignments from? Please enter a module code."
-    bot.send_message(id, reply, reply_markup=forceReply)
-    bot.register_next_step_handler(message, fetchAssignments)
-
-def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
-    id = message.chat.id
-    if initial:
-        code = str(message.text).upper()
-        headers = {'x-api-key': config('server_apiKey')}
-        print(f"{apiServerUrl}assignments/code/{code}")
-        response = requests.get(f"{apiServerUrl}assignments/code/{code}", headers=headers)
-        assignments = list(response.json())
+    if message.text == 'Search assignments by module code':
+        reply = "Which module would you like to view assignments from? Please enter a module code."
+        bot.send_message(id, reply, reply_markup=forceReply)
+        bot.register_next_step_handler(message, fetchAssignments, "module")
+    elif message.text == 'View assignments from my faculty':
+        fetchAssignments(message, "faculty")
     else:
-        code = repeat_code
+        reply = 'You have selected an invalid option, please try again.'
+        bot.send_message(id, reply)
+        mainMenu(message)
+
+@bot.message_handler(commands=['view'])
+def viewAssignmentsCommandHandler(message):
+    fetchAssignments(message, "faculty")
+
+def fetchAssignments(message, type, assignments=None, initial=True, repeat_code=None):
+    id = message.chat.id
+    username = message.chat.username
+    if type == "module":
+        if initial:
+            code = str(message.text).upper()
+            headers = {'x-api-key': config('server_apiKey')}
+            response = requests.get(f"{apiServerUrl}assignments/code/{code}", headers=headers)
+            assignments = list(response.json())
+        else:
+            code = repeat_code
+    else: 
+        headers = {'x-api-key': config('server_apiKey')}
+        student_response = requests.get(f"{apiServerUrl}users/username/{username}", headers=headers)
+        faculty = student_response.json()["faculty"]
+        assignment_response = requests.get(f"{apiServerUrl}assignments/faculty/{faculty}", headers=headers)
+        assignments = list(assignment_response.json())
     current_assignments = assignments
     if len(assignments) == 0:
-        reply = f"There are no assignments from {code} right now, please try again later."
+        if type == "module":
+            reply = f"There are no assignments from {code} right now, please try again later."
+        else:
+            reply = f"There are no assignments posted by members of your faculty right now, please try again later."
         bot.send_message(id, reply)
         mainMenu(message)
     else:
@@ -386,22 +379,28 @@ def fetchAssignments(message, assignments=None, initial=True, repeat_code=None):
             current_assignments = assignments[:5]
             assignments = assignments[5:]
         keyAugment.add('exit')
-        reply = f"Here are some assignments from {code}:"
+        if type == "module":
+            reply = f"Here are some assignments from {code}:"
+        else:
+            reply = "Here are some assignments from your faculty:"
         index = 0
         for assignment in current_assignments:
             index+=1
             reply += f"\n\n{index}: {formatAssignmentData(assignment)}"
         reply += f"\n\nWhat would you like to do?"
         bot.send_message(id, reply, reply_markup=keyAugment)
-        bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, current_assignments, assignments, code)
+        if type == "module":
+            bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, type, current_assignments, assignments, code)
+        else:
+            bot.register_next_step_handler(message, fetchAssignmentsLoopHandler, type, current_assignments, assignments)
 
-def fetchAssignmentsLoopHandler(message, current_assignments, assignments, code):
+def fetchAssignmentsLoopHandler(message, type, current_assignments, assignments, code=None):
     id = message.chat.id
     option = message.text
     if option == 'teach one of these assignments':
         selectAssignment(message, current_assignments)
     elif option == 'view more assignments':
-        fetchAssignments(message, assignments, False, code)
+        fetchAssignments(message, type, assignments, False, code)
     elif option == 'exit':
         reply = 'See you around!'
         bot.send_message(id, reply)
@@ -442,13 +441,13 @@ def validateAssignmentSelection(message, assignments):
             response = requests.post(f"{apiServerUrl}assignments/id/{assignment_id}/tutor/add", {
                 "tutor_username": username
             }, headers=headers)
-            tutor_response = requests.post(f"{apiServerUrl}/users/{username}assignments_as_tutor/add", {
-                assignment_id
-            })
-            if response.status_code == 200 and tutor_response.status_code:
+            tutor_response = requests.post(f"{apiServerUrl}users/{username}/assignments_as_tutor/add", {
+                '_id': assignment_id
+            }, headers=headers)
+            if response.status_code == 200 and tutor_response.status_code == 200:
                 reply = f"You have been added as the tutor for @{student_username}'s {module_code} assignment!"
                 student_message = f"@{username} has been added as the tutor for your {module_code} assignment!"
-                student_response = requests.get(f"{apiServerUrl}users/{student_username}", headers=headers)
+                student_response = requests.get(f"{apiServerUrl}users/username/{student_username}", headers=headers)
                 student = student_response.json()
                 student_chat_id = student['chat_id']
                 bot.send_message(id, reply)
