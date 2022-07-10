@@ -182,7 +182,12 @@ def addAssignmentHandler(message):
 
 def addAssignmentStartHandler(message):
     id = message.chat.id
-    assignmentData = {}
+    username = message.chat.username
+    headers = {'x-api-key': config('server_apiKey')}
+    response = requests.get(f"{apiServerUrl}users/{username}", None, headers=headers)
+    assignmentData = {
+        "faculty": response["faculty"]
+    }
     if message.text == 'yes':
         reply = "Enter the module code for the assignment."
         bot.send_message(id, reply, reply_markup=forceReply)
